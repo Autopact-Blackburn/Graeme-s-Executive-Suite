@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Graeme's — Executive Performance Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Supabase JS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+  :root {
+    --bg: #070a14;
+    --card: #0e1425;
+    --card-alt: #1a2237;
+    --text: #e9ecf4;
+    --muted: #9aa3b8;
+    --border: #26304a;
+    --accent: #00c2ff;
+    --accent-soft: #00c2ff55;
+
+    --kia:#ff008c; --nissan:#007aff; --gwm:#00e676; --xpeng:#00ffe1;
+    --hyundai:#0099ff; --mitsubishi:#ff2e2e; --geely:#00c7ff;
+    --ssangyong:#b084ff; --gmsv:#ffae00; --used:#ff6d00;
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    font-family: system-ui, sans-serif;
+    color: var(--text);
+    padding-bottom: 40px;
+  }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(90deg, #00c2ff22, #00c2ff11, #ffffff00);
+    padding: 18px 16px 12px;
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 4px 12px #0004;
+    border-radius: 0 0 14px 14px;
+  }
+
+  .header-title {
+    font-size: 26px;
+    text-align: center;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .header-sub {
+    text-align: center;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .toggle-row {
+    text-align: center;
+    margin-top: 14px;
+  }
+
+  .toggle-btn {
+    display: inline-block;
+    padding: 7px 16px;
+    margin: 0 5px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-size: 14px;
+    background: var(--card);
+    color: var(--muted);
+    transition: 0.2s;
+  }
+
+  .toggle-btn.active {
+    background: var(--accent);
+    color: #000;
+    font-weight: 600;
+    border-color: var(--accent);
+    box-shadow: 0 0 10px var(--accent-soft);
+  }
+
+  /* SECTIONS */
+
+  .section-title {
+    font-size: 18px;
+    margin: 20px 15px 8px;
+    color: var(--accent);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+    padding: 0 15px;
+  }
+
+  .tile {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 18px;
+    border-radius: 12px;
+    transition: .2s;
+  }
+
+  .tile:hover {
+    background: var(--card-alt);
+  }
+
+  .metric {
+    font-size: 24px;
+    font-weight: bold;
+  }
+
+  .label {
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 4px;
+  }
+
+  /* Location grouping */
+  .location-group {
+    background: #050813;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+
+  .location-header {
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 8px;
+  }
+
+  .dept-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 8px;
+  }
+
+  .dept-tile {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+  }
+
+  .dept-name {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  /* Service extra */
+  .service-extra {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .loading,
+  .error-message {
+    text-align: center;
+    margin-top: 20px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .error-message {
+    color: #ff6b6b;
+  }
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <div class="header-title">Graeme's — Executive Dashboard</div>
+  <div class="header-sub" id="date-label">Loading data…</div>
+
+  <div class="toggle-row">
+    <div id="btnDaily" class="toggle-btn active">DAILY</div>
+    <div id="btnMtd" class="toggle-btn">MTD</div>
+  </div>
+</div>
+
+<div id="status" class="loading">Loading from Supabase…</div>
+
+<!-- Dynamic containers -->
+<div id="summary"></div>
+<div id="brand-section"></div>
+<div id="location-section"></div>
+<div id="service-section"></div>
+
+<script>
+  // ---------- Supabase client ----------
+  const supabaseUrl = "https://ecldmrzlfexinvyyilpi.supabase.co";
+  const supabaseKey = "sb_publishable_8E6BQ2E2-uNz2O3W9TqdQQ_aOC_GXVz";
+  const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+  let mode = "daily"; // "daily" or "mtd"
+  let dashData = null; // will be built from Supabase
+
+  // Helper: format currency
+  function fmtMoney(value) {
+    if (!value) return "$0";
+    return "$" + Number(value).toLocaleString("en-AU", { maximumFractionDigits: 0 });
+  }
+
+  // Helper: get today's date + start-of-month in YYYY-MM-DD
+  function getDateRange() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    const todayStr = `${year}-${month}-${day}`;
+    const startOfMonth = `${year}-${month}-01`;
+    return { todayStr, startOfMonth };
+  }
+
+  // Helper: map department name to brand
+  function getBrandFromDepartment(dept) {
+    const d = (dept || "").toLowerCase();
+    if (d.includes("kia")) return "Kia";
+    if (d.includes("nissan")) return "Nissan";
+    if (d.includes("gwm")) return "GWM";
+    if (d.includes("xpeng")) return "XPENG";
+    if (d.includes("hyundai")) return "Hyundai";
+    if (d.includes("mitsubishi")) return "Mitsubishi";
+    if (d.includes("geely")) return "Geely";
+    if (d.includes("ssang")) return "SsangYong";
+    if (d.includes("gmsv")) return "GMSV";
+    if (d.includes("used")) return "Used Cars";
+    return "Other";
+  }
+
+  // Colors for brands
+  const brandColors = {
+    "Kia": "var(--kia)",
+    "Nissan": "var(--nissan)",
+    "GWM": "var(--gwm)",
+    "XPENG": "var(--xpeng)",
+    "Hyundai": "var(--hyundai)",
+    "Mitsubishi": "var(--mitsubishi)",
+    "Geely": "var(--geely)",
+    "SsangYong": "var(--ssangyong)",
+    "GMSV": "var(--gmsv)",
+    "Used Cars": "var(--used)",
+    "Other": "var(--accent)"
+  };
+
+  async function loadDashboardData() {
+    const statusEl = document.getElementById("status");
+    const dateLabel = document.getElementById("date-label");
+    statusEl.textContent = "Loading from Supabase…";
+
+    const { todayStr, startOfMonth } = getDateRange();
+    dateLabel.textContent = `Data for ${todayStr}`;
+
+    // 1) Fetch SALES (MTD)
+    const { data: salesRows, error: salesError } = await supabase
+      .from("sales_reports")
+      .select("*")
+      .gte("date", startOfMonth)
+      .lte("date", todayStr);
+
+    if (salesError) {
+      console.error(salesError);
+      statusEl.textContent = "";
+      statusEl.className = "error-message";
+      statusEl.textContent = "Error loading sales_reports from Supabase.";
+      return;
+    }
+
+    // 2) Fetch SERVICE (MTD)
+    const { data: serviceRows, error: serviceError } = await supabase
+      .from("service_reports")
+      .select("*")
+      .gte("date", startOfMonth)
+      .lte("date", todayStr);
+
+    if (serviceError) {
+      console.error(serviceError);
+      statusEl.textContent = "";
+      statusEl.className = "error-message";
+      statusEl.textContent = "Error loading service_reports from Supabase.";
+      return;
+    }
+
+    // ---------- Build dashData from Supabase ----------
+
+    // BRANDS
+    const brandMap = {};
+    // LOCATIONS
+    const locationMap = {};
+
+    salesRows.forEach(row => {
+      const dateStr = row.date;
+      const isToday = (dateStr === todayStr);
+
+      const location = row.location || "Unknown";
+      const department = row.department || "Unknown";
+      const leads = row.leads || 0;
+      const sales = row.sales || 0;
+
+      // Brand
+      const brand = getBrandFromDepartment(department);
+      if (!brandMap[brand]) {
+        brandMap[brand] = {
+          brand,
+          dailyLeads: 0,
+          dailySales: 0,
+          mtdLeads: 0,
+          mtdSales: 0,
+          color: brandColors[brand] || "var(--accent)"
+        };
+      }
+      brandMap[brand].mtdLeads += leads;
+      brandMap[brand].mtdSales += sales;
+      if (isToday) {
+        brandMap[brand].dailyLeads += leads;
+        brandMap[brand].dailySales += sales;
+      }
+
+      // Location + department
+      if (!locationMap[location]) {
+        locationMap[location] = {};
+      }
+      if (!locationMap[location][department]) {
+        locationMap[location][department] = {
+          name: department,
+          dailyLeads: 0,
+          dailySales: 0,
+          mtdLeads: 0,
+          mtdSales: 0
+        };
+      }
+      const dept = locationMap[location][department];
+      dept.mtdLeads += leads;
+      dept.mtdSales += sales;
+      if (isToday) {
+        dept.dailyLeads += leads;
+        dept.dailySales += sales;
+      }
+    });
+
+    // Convert maps to arrays
+    const brands = Object.values(brandMap);
+    const locations = Object.keys(locationMap).map(locName => {
+      const deptMap = locationMap[locName];
+      return {
+        location: locName,
+        departments: Object.values(deptMap)
+      };
+    });
+
+    // SERVICE
+    const serviceMap = {};
+
+    serviceRows.forEach(row => {
+      const site = row.site || "Unknown Service";
+      const dateStr = row.date;
+      const isToday = (dateStr === todayStr);
+
+      if (!serviceMap[site]) {
+        serviceMap[site] = {
+          site,
+          dailyCustomerRos: 0,
+          dailyWarrantyRos: 0,
+          dailyInvoicedRemaining: 0,
+          dailyGross: 0,
+          mtdCustomerRos: 0,
+          mtdWarrantyRos: 0,
+          mtdGross: 0,
+          targetGross: 0,
+          workingDays: 22,
+          datesSet: new Set()
+        };
+      }
+
+      const s = serviceMap[site];
+
+      const customer = row.customer_ros_today || 0;
+      const warranty = row.warranty_ros_today || 0;
+      const invRem = row.invoiced_remaining || 0;
+      const gross = row.gross_today || 0;
+
+      s.mtdCustomerRos += customer;
+      s.mtdWarrantyRos += warranty;
+      s.mtdGross += gross;
+      s.datesSet.add(dateStr);
+
+      if (isToday) {
+        s.dailyCustomerRos += customer;
+        s.dailyWarrantyRos += warranty;
+        s.dailyInvoicedRemaining += invRem;
+        s.dailyGross += gross;
+      }
+
+      if (row.target_gross != null) s.targetGross = row.target_gross;
+      if (row.working_days != null) s.workingDays = row.working_days;
+    });
+
+    const services = Object.values(serviceMap).map(s => {
+      const daysElapsed = s.datesSet.size || 1;
+      return {
+        site: s.site,
+        customerRosToday: s.dailyCustomerRos,
+        warrantyRosToday: s.dailyWarrantyRos,
+        invoicedNotClosedRemaining: s.dailyInvoicedRemaining,
+        grossToday: s.dailyGross,
+        mtdRos: s.mtdCustomerRos + s.mtdWarrantyRos,
+        mtdGross: s.mtdGross,
+        targetGross: s.targetGross || 0,
+        workingDays: s.workingDays || 22,
+        daysElapsed
+      };
+    });
+
+    dashData = {
+      date: todayStr,
+      brands,
+      locations,
+      services
+    };
+
+    statusEl.textContent = "";
+    statusEl.className = "";
+    renderAll();
+  }
+
+  // ---------- RENDER ENGINE (uses dashData) ----------
+
+  function renderSummary() {
+    if (!dashData) return;
+    const s = dashData;
+    const cont = document.getElementById("summary");
+
+    let totalLeadsDaily = 0, totalSalesDaily = 0;
+    let totalLeadsMtd = 0, totalSalesMtd = 0;
+
+    s.locations.forEach(loc => {
+      loc.departments.forEach(d => {
+        totalLeadsDaily += d.dailyLeads;
+        totalSalesDaily += d.dailySales;
+        totalLeadsMtd += d.mtdLeads;
+        totalSalesMtd += d.mtdSales;
+      });
+    });
+
+    let totalDailyRos = 0, totalMtdRos = 0;
+    let totalDailyGross = 0, totalMtdGross = 0;
+    let totalTargetGross = 0;
+    let daysElapsedCommon = 0;
+    let workingDaysCommon = 0;
+
+    s.services.forEach(site => {
+      const dailyRos = site.customerRosToday + site.warrantyRosToday;
+      totalDailyRos += dailyRos;
+      totalMtdRos += site.mtdRos;
+      totalDailyGross += site.grossToday;
+      totalMtdGross += site.mtdGross;
+      totalTargetGross += site.targetGross;
+      daysElapsedCommon = Math.max(daysElapsedCommon, site.daysElapsed);
+      workingDaysCommon = Math.max(workingDaysCommon, site.workingDays);
+    });
+
+    if (!daysElapsedCommon) daysElapsedCommon = 1;
+    if (!workingDaysCommon) workingDaysCommon = 22;
+
+    const roDailyAvg = totalMtdRos / daysElapsedCommon;
+    const requiredGrossPerDay = totalTargetGross / workingDaysCommon;
+
+    const leadsVal = mode === "daily" ? totalLeadsDaily : totalLeadsMtd;
+    const salesVal = mode === "daily" ? totalSalesDaily : totalSalesMtd;
+    const rosVal = mode === "daily" ? totalDailyRos : totalMtdRos;
+    const grossVal = mode === "daily" ? totalDailyGross : totalMtdGross;
+
+    cont.innerHTML = `
+      <div class="section-title">Group Summary</div>
+      <div class="grid">
+        <div class="tile">
+          <div class="metric">${leadsVal}</div>
+          <div class="label">${mode === "daily" ? "Leads Today" : "Leads MTD"}</div>
+        </div>
+        <div class="tile">
+          <div class="metric">${salesVal}</div>
+          <div class="label">${mode === "daily" ? "Sales Today" : "Sales MTD"}</div>
+        </div>
+        <div class="tile">
+          <div class="metric">${rosVal}</div>
+          <div class="label">${mode === "daily" ? "ROs Today" : "ROs MTD"}</div>
+        </div>
+        <div class="tile">
+          <div class="metric">${fmtMoney(grossVal)}</div>
+          <div class="label">${mode === "daily" ? "Gross Today" : "Gross MTD"}</div>
+        </div>
+
+        ${mode === "mtd" ? `
+        <div class="tile">
+          <div class="metric">${roDailyAvg.toFixed(1)}</div>
+          <div class="label">RO Daily Avg</div>
+        </div>
+        <div class="tile">
+          <div class="metric">${fmtMoney(requiredGrossPerDay)}</div>
+          <div class="label">Required Gross/Day</div>
+        </div>
+        ` : ""}
+      </div>
+    `;
+  }
+
+  function renderBrands() {
+    if (!dashData) return;
+    const s = dashData;
+    const cont = document.getElementById("brand-section");
+
+    const g = document.createElement("div");
+    g.className = "grid";
+
+    s.brands.forEach(b => {
+      const leadsVal = mode === "daily" ? b.dailyLeads : b.mtdLeads;
+      const salesVal = mode === "daily" ? b.dailySales : b.mtdSales;
+
+      const tile = document.createElement("div");
+      tile.className = "tile";
+      tile.style.borderLeft = "6px solid " + (b.color || "var(--accent)");
+
+      tile.innerHTML = `
+        <div class="brand-label">${b.brand}</div>
+        <div class="metric">${leadsVal}</div>
+        <div class="label">${mode === "daily" ? "Leads Today" : "Leads MTD"}</div>
+        <br>
+        <div class="metric">${salesVal}</div>
+        <div class="label">${mode === "daily" ? "Sales Today" : "Sales MTD"}</div>
+      `;
+      g.appendChild(tile);
+    });
+
+    cont.innerHTML = `<div class="section-title">Brand Performance</div>`;
+    cont.appendChild(g);
+  }
+
+  function renderLocations() {
+    if (!dashData) return;
+    const s = dashData;
+    const cont = document.getElementById("location-section");
+    cont.innerHTML = `<div class="section-title">Location Breakdown</div>`;
+
+    const grid = document.createElement("div");
+    grid.className = "grid";
+
+    s.locations.forEach(loc => {
+      const box = document.createElement("div");
+      box.className = "location-group";
+
+      box.innerHTML = `<div class="location-header">${loc.location}</div>`;
+
+      const deptList = document.createElement("div");
+      deptList.className = "dept-list";
+
+      loc.departments.forEach(d => {
+        const leadsVal = mode === "daily" ? d.dailyLeads : d.mtdLeads;
+        const salesVal = mode === "daily" ? d.dailySales : d.mtdSales;
+
+        const tile = document.createElement("div");
+        tile.className = "dept-tile";
+        tile.innerHTML = `
+          <div class="dept-name">${d.name}</div>
+          <div class="dept-row">
+            <span>Leads</span> <span>${leadsVal}</span>
+          </div>
+          <div class="dept-row">
+            <span>Sales</span> <span>${salesVal}</span>
+          </div>
+        `;
+        deptList.appendChild(tile);
+      });
+
+      box.appendChild(deptList);
+      grid.appendChild(box);
+    });
+
+    cont.appendChild(grid);
+  }
+
+  function renderServices() {
+    if (!dashData) return;
+    const s = dashData;
+    const cont = document.getElementById("service-section");
+    cont.innerHTML = `<div class="section-title">Service Departments</div>`;
+
+    const grid = document.createElement("div");
+    grid.className = "grid";
+
+    s.services.forEach(x => {
+      const dailyRos = x.customerRosToday + x.warrantyRosToday;
+      const roVal = mode === "daily" ? dailyRos : x.mtdRos;
+      const grossVal = mode === "daily" ? x.grossToday : x.mtdGross;
+
+      const tile = document.createElement("div");
+      tile.className = "tile";
+
+      tile.innerHTML = `
+        <div class="location-label">${x.site}</div>
+
+        <div class="metric">${roVal}</div>
+        <div class="label">${mode === "daily" ? "ROs Today" : "ROs MTD"}</div>
+
+        <div class="service-extra">
+          Customer: ${x.customerRosToday} | Warranty: ${x.warrantyRosToday}<br>
+          Invoiced Remaining: ${x.invoicedNotClosedRemaining}
+        </div>
+
+        <br>
+
+        <div class="metric">${fmtMoney(grossVal)}</div>
+        <div class="label">${mode === "daily" ? "Gross Today" : "Gross MTD"}</div>
+
+        ${mode === "mtd" ? `
+          <div class="label">RO Daily Avg: ${(x.mtdRos / x.daysElapsed).toFixed(1)}</div>
+          <div class="label">Gross Daily Avg: ${fmtMoney(x.mtdGross / x.daysElapsed)}</div>
+          <div class="label">Required Gross/Day: ${fmtMoney(x.targetGross / x.workingDays)}</div>
+        ` : ""}
+      `;
+
+      grid.appendChild(tile);
+    });
+
+    cont.appendChild(grid);
+  }
+
+  function renderAll() {
+    renderSummary();
+    renderBrands();
+    renderLocations();
+    renderServices();
+  }
+
+  // Toggle handlers
+  document.getElementById("btnDaily").onclick = () => {
+    mode = "daily";
+    document.getElementById("btnDaily").classList.add("active");
+    document.getElementById("btnMtd").classList.remove("active");
+    renderAll();
+  };
+
+  document.getElementById("btnMtd").onclick = () => {
+    mode = "mtd";
+    document.getElementById("btnMtd").classList.add("active");
+    document.getElementById("btnDaily").classList.remove("active");
+    renderAll();
+  };
+
+  // Load from Supabase on startup
+  loadDashboardData();
+</script>
+
+</body>
+</html>
