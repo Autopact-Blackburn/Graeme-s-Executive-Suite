@@ -96,7 +96,6 @@
 <div class="container">
   <h2>Manager Daily Entry</h2>
 
-  <!-- DEPARTMENT SELECTOR -->
   <label>Select Your Department</label>
   <select id="departmentSelect">
     <optgroup label="Sales Departments">
@@ -137,7 +136,6 @@
     </optgroup>
   </select>
 
-  <!-- FORM AREA -->
   <div id="formArea"></div>
 
   <button class="btn" id="submitBtn">Submit</button>
@@ -147,7 +145,6 @@
 </div>
 
 <script>
-  // ---------- Supabase ----------
   const supabaseUrl = "https://ecldmrzlfexinvyyilpi.supabase.co";
   const supabaseKey = "sb_publishable_8E6BQ2E2-uNz2O3W9TqdQQ_aOC_GXVz";
   const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
@@ -161,7 +158,6 @@
     return dept.toLowerCase().includes("service");
   }
 
-  // ---------- RENDER FORM ----------
   function renderForm() {
     const dept = departmentSelect.value;
     formArea.innerHTML = "";
@@ -194,7 +190,6 @@
   departmentSelect.onchange = renderForm;
   renderForm();
 
-  // ---------- SUBMIT ----------
   document.getElementById("submitBtn").onclick = async () => {
     successMsg.style.display = "none";
     errorMsg.style.display = "none";
@@ -202,18 +197,16 @@
     const dept = departmentSelect.value;
     const today = new Date().toISOString().split("T")[0];
 
-    // SERVICE SUBMISSION
     if (isServiceDepartment(dept)) {
       const payload = {
         date: today,
         site: dept,
         customer_ros: Number(document.getElementById("custRos").value || 0),
-        warranty_ros_: Number(document.getElementById("warrRos").value || 0),
+        warranty_ros_today: Number(document.getElementById("warrRos").value || 0),
         invoiced_remaining: Number(document.getElementById("invRemain").value || 0),
         gross_today: Number(document.getElementById("grossToday").value || 0),
         target_gross: 0,
-        working_days_: 22
-        // mtd_ros, mtd_gross, days_elapsed will stay NULL for now
+        working_days: 22
       };
 
       const { data, error } = await supabase
@@ -228,22 +221,18 @@
       } else {
         successMsg.style.display = "block";
       }
-
       return;
     }
 
-    // SALES SUBMISSION
     const location = dept.split(" ")[0];
 
-    const { error } = await supabase.from("sales_reports").insert([
-      {
-        date: today,
-        location,
-        department: dept,
-        leads: Number(document.getElementById("leads").value || 0),
-        sales: Number(document.getElementById("sales").value || 0)
-      }
-    ]);
+    const { error } = await supabase.from("sales_reports").insert([{
+      date: today,
+      location,
+      department: dept,
+      leads: Number(document.getElementById("leads").value || 0),
+      sales: Number(document.getElementById("sales").value || 0)
+    }]);
 
     if (error) {
       console.error("SALES ERROR:", error);
