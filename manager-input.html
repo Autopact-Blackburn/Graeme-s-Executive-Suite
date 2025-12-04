@@ -207,12 +207,13 @@
       const payload = {
         date: today,
         site: dept,
-        customer_ros_today: Number(document.getElementById("custRos").value || 0),
-        warranty_ros_today: Number(document.getElementById("warrRos").value || 0),
-        invoiced_remaining: Number(document.getElementById("invRemain").value || 0),
+        customer_ros: Number(document.getElementById("custRos").value || 0),
+        warranty_ros_: Number(document.getElementById("warrRos").value || 0),
+        invoiced_rem: Number(document.getElementById("invRemain").value || 0),
         gross_today: Number(document.getElementById("grossToday").value || 0),
         target_gross: 0,
-        working_days: 22
+        working_days_: 22
+        // mtd_ros, mtd_gross, days_elapsed will stay NULL for now
       };
 
       const { data, error } = await supabase
@@ -221,8 +222,14 @@
 
       console.log("SERVICE INSERT RESULT:", { data, error });
 
-      if (error) return (errorMsg.style.display = "block");
-      return (successMsg.style.display = "block");
+      if (error) {
+        console.error("SERVICE ERROR:", error);
+        errorMsg.style.display = "block";
+      } else {
+        successMsg.style.display = "block";
+      }
+
+      return;
     }
 
     // SALES SUBMISSION
@@ -238,8 +245,12 @@
       }
     ]);
 
-    if (error) return (errorMsg.style.display = "block");
-    return (successMsg.style.display = "block");
+    if (error) {
+      console.error("SALES ERROR:", error);
+      errorMsg.style.display = "block";
+    } else {
+      successMsg.style.display = "block";
+    }
   };
 </script>
 
