@@ -77,25 +77,17 @@
     opacity: 0.8;
   }
 
-  .success {
+  .success, .error {
     margin-top: 16px;
     padding: 12px;
     border-radius: 8px;
-    background: var(--success);
-    color: #000;
     text-align: center;
     display: none;
+    font-weight: 600;
   }
 
-  .error {
-    margin-top: 16px;
-    padding: 12px;
-    border-radius: 8px;
-    background: var(--danger);
-    color: #fff;
-    text-align: center;
-    display: none;
-  }
+  .success { background: var(--success); color: #000; }
+  .error { background: var(--danger); color: #fff; }
 </style>
 </head>
 
@@ -145,7 +137,7 @@
     </optgroup>
   </select>
 
-  <!-- FORM WILL BE INJECTED HERE -->
+  <!-- FORM AREA -->
   <div id="formArea"></div>
 
   <button class="btn" id="submitBtn">Submit</button>
@@ -162,42 +154,39 @@
 
   const departmentSelect = document.getElementById("departmentSelect");
   const formArea = document.getElementById("formArea");
-  const submitBtn = document.getElementById("submitBtn");
   const successMsg = document.getElementById("successMsg");
   const errorMsg = document.getElementById("errorMsg");
 
-  function isServiceDepartment(name) {
-    return name.toLowerCase().includes("service");
+  function isServiceDepartment(dept) {
+    return dept.toLowerCase().includes("service");
   }
 
-  // Render form dynamically
+  // ---------- RENDER FORM ----------
   function renderForm() {
     const dept = departmentSelect.value;
     formArea.innerHTML = "";
 
     if (isServiceDepartment(dept)) {
-      // SERVICE FORM
       formArea.innerHTML = `
         <label>Customer ROs Closed Today</label>
-        <input type="number" id="custRos" min="0">
+        <input type="number" id="custRos">
 
         <label>Warranty ROs Closed Today</label>
-        <input type="number" id="warrRos" min="0">
+        <input type="number" id="warrRos">
 
         <label>Invoiced Not Closed Remaining</label>
-        <input type="number" id="invRemain" min="0">
+        <input type="number" id="invRemain">
 
         <label>Gross Today ($)</label>
-        <input type="number" id="grossToday" min="0">
+        <input type="number" id="grossToday">
       `;
     } else {
-      // SALES FORM
       formArea.innerHTML = `
         <label>Leads Today</label>
-        <input type="number" id="leads" min="0">
+        <input type="number" id="leads">
 
         <label>Sales Today</label>
-        <input type="number" id="sales" min="0">
+        <input type="number" id="sales">
       `;
     }
   }
@@ -206,54 +195,51 @@
   renderForm();
 
   // ---------- SUBMIT ----------
-  submitBtn.onclick = async () => {
+  document.getElementById("submitBtn").onclick = async () => {
     successMsg.style.display = "none";
     errorMsg.style.display = "none";
 
     const dept = departmentSelect.value;
     const today = new Date().toISOString().split("T")[0];
 
+    // SERVICE SUBMISSION
     if (isServiceDepartment(dept)) {
-      // SUBMIT SERVICE
-      const { error } = await supabase.from("service_reports").insert([
-        {
-          date: today,
-          site: dept,
-          customer_ros_today: Number(document.getElementById("custRos").value || 0),
-          warranty_ros_today: Number(document.getElementById("warrRos").value || 0),
-          invoiced_remaining: Number(document.getElementById("invRemain").value || 0),
-          gross_today: Number(document.getElementById("grossToday").value || 0),
-          target_gross: 0,       // Manager does NOT set this
-          working_days: 22       // Static for now
-        }
-      ]);
+      const payload = {
+        date: today,
+        site: dept,
+        customer_ros_today: Number(document.getElementById("custRos").value || 0),
+        warranty_ros_today: Number(document.getElementById("warrRos").value || 0),
+        invoiced_remaining: Number(document.getElementById("invRemain").value || 0),
+        gross_today: Number(document.getElementById("grossToday").value || 0),
+        target_gross: 0,
+        working_days: 22
+      };
 
-      if (error) {
-        errorMsg.style.display = "block";
-      } else {
-        successMsg.style.display = "block";
-      }
+      const { data, error } = await supabase
+        .from("service_reports")
+        .insert([payload]);
 
-    } else {
-      // SUBMIT SALES
-      const location = dept.split(" ")[0]; // e.g. "Blackburn", "FTG", etc.
+      console.log("SERVICE INSERT RESULT:", { data, error });
 
-      const { error } = await supabase.from("sales_reports").insert([
-        {
-          date: today,
-          location,
-          department: dept,
-          leads: Number(document.getElementById("leads").value || 0),
-          sales: Number(document.getElementById("sales").value || 0)
-        }
-      ]);
-
-      if (error) {
-        errorMsg.style.display = "block";
-      } else {
-        successMsg.style.display = "block";
-      }
+      if (error) return (errorMsg.style.display = "block");
+      return (successMsg.style.display = "block");
     }
+
+    // SALES SUBMISSION
+    const location = dept.split(" ")[0];
+
+    const { error } = await supabase.from("sales_reports").insert([
+      {
+        date: today,
+        location,
+        department: dept,
+        leads: Number(document.getElementById("leads").value || 0),
+        sales: Number(document.getElementById("sales").value || 0)
+      }
+    ]);
+
+    if (error) return (errorMsg.style.display = "block");
+    return (successMsg.style.display = "block");
   };
 </script>
 
