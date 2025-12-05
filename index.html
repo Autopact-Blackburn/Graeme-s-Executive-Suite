@@ -390,6 +390,8 @@
       s.mtdWarrantyRos += warranty;
       s.mtdGross += gross;
       s.datesSet.add(dateStr);
+      s.mtdInvoicedRemaining = invRem;
+
 
       if (isToday) {
         s.dailyCustomerRos += customer;
@@ -409,6 +411,7 @@
         customerRosToday: s.dailyCustomerRos,
         warrantyRosToday: s.dailyWarrantyRos,
         invoicedNotClosedRemaining: s.dailyInvoicedRemaining,
+        mtdInvoicedRemaining: s.mtdInvoicedRemaining,
         grossToday: s.dailyGross,
         mtdRos: s.mtdCustomerRos + s.mtdWarrantyRos,
         mtdGross: s.mtdGross,
@@ -610,7 +613,10 @@
 
         <div class="service-extra">
           Customer: ${x.customerRosToday} | Warranty: ${x.warrantyRosToday}<br>
-          Invoiced Remaining: ${x.invoicedNotClosedRemaining}
+          Invoiced Remaining: ${mode === "daily" 
+    ? x.invoicedNotClosedRemaining 
+    : x.mtdInvoicedRemaining}
+
         </div>
 
         <br>
@@ -659,4 +665,5 @@
 
 </body>
 </html>
+
 
