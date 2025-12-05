@@ -381,7 +381,7 @@
 
       const s = serviceMap[site];
 
-      const customer = row.customer_ros_today || 0;
+      const customer = row.customer_ros || 0;
       const warranty = row.warranty_ros_today || 0;
       const invRem = row.invoiced_remaining || 0;
       const gross = row.gross_today || 0;
@@ -665,5 +665,6 @@
 
 </body>
 </html>
+
 
 
