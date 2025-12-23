@@ -9,150 +9,95 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-  :root {
-    --bg: #070a14;
-    --card: #0e1425;
-    --card-alt: #1a2237;
-    --text: #e9ecf4;
-    --muted: #9aa3b8;
-    --border: #26304a;
-    --accent: #00c2ff;
-    --accent-soft: #00c2ff55;
+:root {
+  --bg:#070a14;
+  --card:#0e1425;
+  --card-alt:#1a2237;
+  --text:#e9ecf4;
+  --muted:#9aa3b8;
+  --border:#26304a;
+  --accent:#00c2ff;
+  --accent-soft:#00c2ff55;
+}
 
-    --kia:#ff008c; --nissan:#007aff; --gwm:#00e676; --xpeng:#00ffe1;
-    --hyundai:#0099ff; --mitsubishi:#ff2e2e; --geely:#00c7ff;
-    --ssangyong:#b084ff; --gmsv:#ffae00; --used:#ff6d00;
-  }
+body {
+  margin:0;
+  background:var(--bg);
+  font-family:system-ui,sans-serif;
+  color:var(--text);
+  padding-bottom:40px;
+}
 
-  body {
-    margin: 0;
-    background: var(--bg);
-    font-family: system-ui, sans-serif;
-    color: var(--text);
-    padding-bottom: 40px;
-  }
+.header {
+  background:linear-gradient(90deg,#00c2ff22,#00c2ff11,#0000);
+  padding:18px 16px 12px;
+  border-bottom:1px solid var(--border);
+}
 
-  .header {
-    background: linear-gradient(90deg, #00c2ff22, #00c2ff11, #ffffff00);
-    padding: 18px 16px 12px;
-    border-bottom: 1px solid var(--border);
-    box-shadow: 0 4px 12px #0004;
-    border-radius: 0 0 14px 14px;
-  }
+.header-title {
+  font-size:26px;
+  text-align:center;
+  font-weight:700;
+  color:var(--accent);
+}
 
-  .header-title {
-    font-size: 26px;
-    text-align: center;
-    font-weight: 700;
-    color: var(--accent);
-  }
+.header-sub {
+  text-align:center;
+  font-size:12px;
+  color:var(--muted);
+}
 
-  .header-sub {
-    text-align: center;
-    margin-top: 4px;
-    font-size: 12px;
-    color: var(--muted);
-  }
+.toggle-row {
+  text-align:center;
+  margin-top:12px;
+}
 
-  .toggle-row {
-    text-align: center;
-    margin-top: 14px;
-  }
+.toggle-btn {
+  display:inline-block;
+  padding:7px 16px;
+  margin:0 4px;
+  border-radius:20px;
+  border:1px solid var(--border);
+  cursor:pointer;
+  background:var(--card);
+  color:var(--muted);
+}
 
-  .toggle-btn {
-    display: inline-block;
-    padding: 7px 16px;
-    margin: 0 5px;
-    border-radius: 20px;
-    border: 1px solid var(--border);
-    cursor: pointer;
-    font-size: 14px;
-    background: var(--card);
-    color: var(--muted);
-    transition: 0.2s;
-  }
+.toggle-btn.active {
+  background:var(--accent);
+  color:#000;
+  font-weight:600;
+}
 
-  .toggle-btn.active {
-    background: var(--accent);
-    color: #000;
-    font-weight: 600;
-    border-color: var(--accent);
-    box-shadow: 0 0 10px var(--accent-soft);
-  }
+.section-title {
+  margin:22px 15px 10px;
+  font-size:18px;
+  color:var(--accent);
+}
 
-  .section-title {
-    font-size: 18px;
-    margin: 20px 15px 8px;
-    color: var(--accent);
-  }
+.grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:14px;
+  padding:0 15px;
+}
 
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 14px;
-    padding: 0 15px;
-  }
+.tile {
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:16px;
+}
 
-  .tile {
-    background: var(--card);
-    border: 1px solid var(--border);
-    padding: 18px;
-    border-radius: 12px;
-  }
+.metric {
+  font-size:24px;
+  font-weight:700;
+}
 
-  .metric {
-    font-size: 24px;
-    font-weight: bold;
-  }
-
-  .label {
-    color: var(--muted);
-    font-size: 13px;
-    margin-top: 4px;
-  }
-
-  .location-group {
-    background: #050813;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 12px 14px;
-  }
-
-  .location-header {
-    color: var(--accent);
-    font-weight: 600;
-    font-size: 15px;
-    margin-bottom: 8px;
-  }
-
-  .dept-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: 8px;
-  }
-
-  .dept-tile {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px;
-  }
-
-  .dept-name {
-    font-size: 13px;
-    font-weight: 600;
-  }
-
-  .loading, .error-message {
-    text-align: center;
-    margin-top: 20px;
-    color: var(--muted);
-    font-size: 14px;
-  }
-
-  .error-message {
-    color: #ff6b6b;
-  }
+.label {
+  font-size:13px;
+  color:var(--muted);
+}
 </style>
 </head>
 
@@ -160,26 +105,19 @@
 
 <div class="header">
   <div class="header-title">Graeme's — Executive Dashboard</div>
-  <div class="header-sub" id="date-label">Loading data…</div>
+  <div class="header-sub" id="dateLabel">Loading…</div>
 
   <div class="toggle-row">
-    <div id="btnDaily" class="toggle-btn active">DAILY</div>
-    <div id="btnMtd" class="toggle-btn">MTD</div>
+    <span id="btnDaily" class="toggle-btn active">DAILY</span>
+    <span id="btnMtd" class="toggle-btn">MTD</span>
   </div>
 </div>
 
-<div id="status" class="loading">Loading from Supabase…</div>
-
 <div id="summary"></div>
-<div id="brand-section"></div>
-<div id="location-section"></div>
-<div id="service-section"></div>
-
 <script>
 /* ===============================
-   SUPABASE CLIENT (SAFE)
+   SUPABASE (SAFE — NO supabase VAR)
    =============================== */
-
 const sb = window.supabase.createClient(
   "https://ecldmrzlfexinvyyilpi.supabase.co",
   "sb_publishable_8E6BQ2E2-uNz2O3W9TqdQQ_aOC_GXVz"
@@ -188,98 +126,110 @@ const sb = window.supabase.createClient(
 let mode = "daily";
 let dashData = null;
 
-const fmtMoney = v =>
+const money = v =>
   "$" + Number(v || 0).toLocaleString("en-AU", { maximumFractionDigits: 0 });
 
-const getDateRange = () => {
+function getDates() {
   const d = new Date();
   const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return { today: `${y}-${m}-${day}`, start: `${y}-${m}-01` };
-};
-
-const getBrand = d => {
-  d = (d || "").toLowerCase();
-  if (d.includes("kia")) return "Kia";
-  if (d.includes("nissan")) return "Nissan";
-  if (d.includes("gwm")) return "GWM";
-  if (d.includes("xpeng")) return "XPENG";
-  if (d.includes("hyundai")) return "Hyundai";
-  if (d.includes("mitsubishi")) return "Mitsubishi";
-  if (d.includes("geely")) return "Geely";
-  if (d.includes("ssang")) return "SsangYong";
-  if (d.includes("gmsv")) return "GMSV";
-  if (d.includes("used")) return "Used Cars";
-  return "Other";
-};
-
-const brandColors = {
-  Kia:"var(--kia)", Nissan:"var(--nissan)", GWM:"var(--gwm)", XPENG:"var(--xpeng)",
-  Hyundai:"var(--hyundai)", Mitsubishi:"var(--mitsubishi)", Geely:"var(--geely)",
-  SsangYong:"var(--ssangyong)", GMSV:"var(--gmsv)", "Used Cars":"var(--used)",
-  Other:"var(--accent)"
-};
+  const m = String(d.getMonth() + 1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
+  return {
+    today: `${y}-${m}-${day}`,
+    start: `${y}-${m}-01`
+  };
+}
 
 async function loadDashboardData() {
-  const { today, start } = getDateRange();
-  document.getElementById("date-label").textContent = `Data for ${today}`;
+  const { today, start } = getDates();
+  document.getElementById("dateLabel").textContent = `Data for ${today}`;
 
-  const { data: sales } = await sb.from("sales_reports").select("*").gte("date", start).lte("date", today);
-  const { data: service } = await sb.from("service_reports").select("*").gte("date", start).lte("date", today);
+  const { data: sales } = await sb
+    .from("sales_reports")
+    .select("*")
+    .gte("date", start)
+    .lte("date", today);
 
-  const brandMap = {}, locMap = {}, svcMap = {};
+  const { data: service } = await sb
+    .from("service_reports")
+    .select("*")
+    .gte("date", start)
+    .lte("date", today);
+
+  let totals = {
+    dailyLeads:0, mtdLeads:0,
+    dailySales:0, mtdSales:0,
+    dailyRos:0, mtdRos:0,
+    dailyGross:0, mtdGross:0
+  };
 
   (sales || []).forEach(r => {
-    const isToday = r.date === today;
-    const brand = getBrand(r.department);
-    brandMap[brand] ??= { brand, color: brandColors[brand], dailyLeads:0, dailySales:0, mtdLeads:0, mtdSales:0 };
-    brandMap[brand].mtdLeads += r.leads||0;
-    brandMap[brand].mtdSales += r.sales||0;
-    if (isToday) {
-      brandMap[brand].dailyLeads += r.leads||0;
-      brandMap[brand].dailySales += r.sales||0;
-    }
-
-    locMap[r.location] ??= {};
-    locMap[r.location][r.department] ??= { name:r.department, dailyLeads:0, dailySales:0, mtdLeads:0, mtdSales:0 };
-    const d = locMap[r.location][r.department];
-    d.mtdLeads += r.leads||0;
-    d.mtdSales += r.sales||0;
-    if (isToday) {
-      d.dailyLeads += r.leads||0;
-      d.dailySales += r.sales||0;
+    totals.mtdLeads += r.leads || 0;
+    totals.mtdSales += r.sales || 0;
+    if (r.date === today) {
+      totals.dailyLeads += r.leads || 0;
+      totals.dailySales += r.sales || 0;
     }
   });
 
   (service || []).forEach(r => {
-    svcMap[r.site] ??= { site:r.site, dailyRos:0, dailyGross:0, mtdRos:0, mtdGross:0 };
-    const s = svcMap[r.site];
-    const ros = (r.customer_ros||0)+(r.warranty_ros_today||0);
-    s.mtdRos += ros;
-    s.mtdGross += r.gross_today||0;
+    const ros = (r.customer_ros || 0) + (r.warranty_ros_today || 0);
+    totals.mtdRos += ros;
+    totals.mtdGross += r.gross_today || 0;
     if (r.date === today) {
-      s.dailyRos += ros;
-      s.dailyGross += r.gross_today||0;
+      totals.dailyRos += ros;
+      totals.dailyGross += r.gross_today || 0;
     }
   });
 
-  dashData = {
-    brands:Object.values(brandMap),
-    locations:Object.entries(locMap).map(([k,v])=>({location:k, departments:Object.values(v)})),
-    services:Object.values(svcMap)
-  };
+  dashData = totals;
+  renderSummary();
+}
+<script>
+function renderSummary() {
+  if (!dashData) return;
 
-  document.getElementById("status").textContent = "";
-  renderAll();
+  const leads = mode === "daily" ? dashData.dailyLeads : dashData.mtdLeads;
+  const sales = mode === "daily" ? dashData.dailySales : dashData.mtdSales;
+  const ros = mode === "daily" ? dashData.dailyRos : dashData.mtdRos;
+  const gross = mode === "daily" ? dashData.dailyGross : dashData.mtdGross;
+
+  document.getElementById("summary").innerHTML = `
+    <div class="section-title">Group Summary</div>
+    <div class="grid">
+      <div class="tile">
+        <div class="metric">${leads}</div>
+        <div class="label">Leads</div>
+      </div>
+      <div class="tile">
+        <div class="metric">${sales}</div>
+        <div class="label">Sales</div>
+      </div>
+      <div class="tile">
+        <div class="metric">${ros}</div>
+        <div class="label">ROs</div>
+      </div>
+      <div class="tile">
+        <div class="metric">${money(gross)}</div>
+        <div class="label">Gross</div>
+      </div>
+    </div>
+  `;
 }
 
-function renderAll() {
-  document.getElementById("summary").innerHTML = `<div class="section-title">Dashboard Loaded</div>`;
-}
+document.getElementById("btnDaily").onclick = () => {
+  mode = "daily";
+  btnDaily.classList.add("active");
+  btnMtd.classList.remove("active");
+  renderSummary();
+};
 
-document.getElementById("btnDaily").onclick = () => { mode="daily"; renderAll(); };
-document.getElementById("btnMtd").onclick = () => { mode="mtd"; renderAll(); };
+document.getElementById("btnMtd").onclick = () => {
+  mode = "mtd";
+  btnMtd.classList.add("active");
+  btnDaily.classList.remove("active");
+  renderSummary();
+};
 
 loadDashboardData();
 </script>
