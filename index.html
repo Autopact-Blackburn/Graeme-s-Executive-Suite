@@ -5,7 +5,7 @@
 <title>Graeme's — Executive Performance Dashboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<!-- Supabase JS -->
+<!-- Supabase CDN -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -32,7 +32,6 @@
     padding-bottom: 40px;
   }
 
-  /* HEADER */
   .header {
     background: linear-gradient(90deg, #00c2ff22, #00c2ff11, #ffffff00);
     padding: 18px 16px 12px;
@@ -81,8 +80,6 @@
     box-shadow: 0 0 10px var(--accent-soft);
   }
 
-  /* SECTIONS */
-
   .section-title {
     font-size: 18px;
     margin: 20px 15px 8px;
@@ -101,11 +98,6 @@
     border: 1px solid var(--border);
     padding: 18px;
     border-radius: 12px;
-    transition: .2s;
-  }
-
-  .tile:hover {
-    background: var(--card-alt);
   }
 
   .metric {
@@ -119,7 +111,6 @@
     margin-top: 4px;
   }
 
-  /* Location grouping */
   .location-group {
     background: #050813;
     border: 1px solid var(--border);
@@ -152,15 +143,7 @@
     font-weight: 600;
   }
 
-  /* Service extra */
-  .service-extra {
-    margin-top: 6px;
-    font-size: 12px;
-    color: var(--muted);
-  }
-
-  .loading,
-  .error-message {
+  .loading, .error-message {
     text-align: center;
     margin-top: 20px;
     color: var(--muted);
@@ -187,484 +170,119 @@
 
 <div id="status" class="loading">Loading from Supabase…</div>
 
-<!-- Dynamic containers -->
 <div id="summary"></div>
 <div id="brand-section"></div>
 <div id="location-section"></div>
 <div id="service-section"></div>
 
 <script>
-  // ---------- Supabase client ----------
-  const supabaseUrl = "https://ecldmrzlfexinvyyilpi.supabase.co";
-  const supabaseKey = "sb_publishable_8E6BQ2E2-uNz2O3W9TqdQQ_aOC_GXVz";
-  const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+/* ===============================
+   SUPABASE CLIENT (SAFE)
+   =============================== */
 
-  let mode = "daily"; // "daily" or "mtd"
-  let dashData = null; // will be built from Supabase
+const sb = window.supabase.createClient(
+  "https://ecldmrzlfexinvyyilpi.supabase.co",
+  "sb_publishable_8E6BQ2E2-uNz2O3W9TqdQQ_aOC_GXVz"
+);
 
-  // Helper: format currency
-  function fmtMoney(value) {
-    if (!value) return "$0";
-    return "$" + Number(value).toLocaleString("en-AU", { maximumFractionDigits: 0 });
-  }
+let mode = "daily";
+let dashData = null;
 
-  // Helper: get today's date + start-of-month in YYYY-MM-DD
-  function getDateRange() {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
-    const todayStr = `${year}-${month}-${day}`;
-    const startOfMonth = `${year}-${month}-01`;
-    return { todayStr, startOfMonth };
-  }
+const fmtMoney = v =>
+  "$" + Number(v || 0).toLocaleString("en-AU", { maximumFractionDigits: 0 });
 
-  // Helper: map department name to brand
-  function getBrandFromDepartment(dept) {
-    const d = (dept || "").toLowerCase();
-    if (d.includes("kia")) return "Kia";
-    if (d.includes("nissan")) return "Nissan";
-    if (d.includes("gwm")) return "GWM";
-    if (d.includes("xpeng")) return "XPENG";
-    if (d.includes("hyundai")) return "Hyundai";
-    if (d.includes("mitsubishi")) return "Mitsubishi";
-    if (d.includes("geely")) return "Geely";
-    if (d.includes("ssang")) return "SsangYong";
-    if (d.includes("gmsv")) return "GMSV";
-    if (d.includes("used")) return "Used Cars";
-    return "Other";
-  }
+const getDateRange = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return { today: `${y}-${m}-${day}`, start: `${y}-${m}-01` };
+};
 
-  // Colors for brands
-  const brandColors = {
-    "Kia": "var(--kia)",
-    "Nissan": "var(--nissan)",
-    "GWM": "var(--gwm)",
-    "XPENG": "var(--xpeng)",
-    "Hyundai": "var(--hyundai)",
-    "Mitsubishi": "var(--mitsubishi)",
-    "Geely": "var(--geely)",
-    "SsangYong": "var(--ssangyong)",
-    "GMSV": "var(--gmsv)",
-    "Used Cars": "var(--used)",
-    "Other": "var(--accent)"
-  };
+const getBrand = d => {
+  d = (d || "").toLowerCase();
+  if (d.includes("kia")) return "Kia";
+  if (d.includes("nissan")) return "Nissan";
+  if (d.includes("gwm")) return "GWM";
+  if (d.includes("xpeng")) return "XPENG";
+  if (d.includes("hyundai")) return "Hyundai";
+  if (d.includes("mitsubishi")) return "Mitsubishi";
+  if (d.includes("geely")) return "Geely";
+  if (d.includes("ssang")) return "SsangYong";
+  if (d.includes("gmsv")) return "GMSV";
+  if (d.includes("used")) return "Used Cars";
+  return "Other";
+};
 
-  async function loadDashboardData() {
-    const statusEl = document.getElementById("status");
-    const dateLabel = document.getElementById("date-label");
-    statusEl.textContent = "Loading from Supabase…";
+const brandColors = {
+  Kia:"var(--kia)", Nissan:"var(--nissan)", GWM:"var(--gwm)", XPENG:"var(--xpeng)",
+  Hyundai:"var(--hyundai)", Mitsubishi:"var(--mitsubishi)", Geely:"var(--geely)",
+  SsangYong:"var(--ssangyong)", GMSV:"var(--gmsv)", "Used Cars":"var(--used)",
+  Other:"var(--accent)"
+};
 
-    const { todayStr, startOfMonth } = getDateRange();
-    dateLabel.textContent = `Data for ${todayStr}`;
+async function loadDashboardData() {
+  const { today, start } = getDateRange();
+  document.getElementById("date-label").textContent = `Data for ${today}`;
 
-    // 1) Fetch SALES (MTD)
-    const { data: salesRows, error: salesError } = await supabase
-      .from("sales_reports")
-      .select("*")
-      .gte("date", startOfMonth)
-      .lte("date", todayStr);
+  const { data: sales } = await sb.from("sales_reports").select("*").gte("date", start).lte("date", today);
+  const { data: service } = await sb.from("service_reports").select("*").gte("date", start).lte("date", today);
 
-    if (salesError) {
-      console.error(salesError);
-      statusEl.textContent = "";
-      statusEl.className = "error-message";
-      statusEl.textContent = "Error loading sales_reports from Supabase.";
-      return;
+  const brandMap = {}, locMap = {}, svcMap = {};
+
+  (sales || []).forEach(r => {
+    const isToday = r.date === today;
+    const brand = getBrand(r.department);
+    brandMap[brand] ??= { brand, color: brandColors[brand], dailyLeads:0, dailySales:0, mtdLeads:0, mtdSales:0 };
+    brandMap[brand].mtdLeads += r.leads||0;
+    brandMap[brand].mtdSales += r.sales||0;
+    if (isToday) {
+      brandMap[brand].dailyLeads += r.leads||0;
+      brandMap[brand].dailySales += r.sales||0;
     }
 
-    // 2) Fetch SERVICE (MTD)
-    const { data: serviceRows, error: serviceError } = await supabase
-      .from("service_reports")
-      .select("*")
-      .gte("date", startOfMonth)
-      .lte("date", todayStr);
-
-    if (serviceError) {
-      console.error(serviceError);
-      statusEl.textContent = "";
-      statusEl.className = "error-message";
-      statusEl.textContent = "Error loading service_reports from Supabase.";
-      return;
+    locMap[r.location] ??= {};
+    locMap[r.location][r.department] ??= { name:r.department, dailyLeads:0, dailySales:0, mtdLeads:0, mtdSales:0 };
+    const d = locMap[r.location][r.department];
+    d.mtdLeads += r.leads||0;
+    d.mtdSales += r.sales||0;
+    if (isToday) {
+      d.dailyLeads += r.leads||0;
+      d.dailySales += r.sales||0;
     }
+  });
 
-    // ---------- Build dashData from Supabase ----------
+  (service || []).forEach(r => {
+    svcMap[r.site] ??= { site:r.site, dailyRos:0, dailyGross:0, mtdRos:0, mtdGross:0 };
+    const s = svcMap[r.site];
+    const ros = (r.customer_ros||0)+(r.warranty_ros_today||0);
+    s.mtdRos += ros;
+    s.mtdGross += r.gross_today||0;
+    if (r.date === today) {
+      s.dailyRos += ros;
+      s.dailyGross += r.gross_today||0;
+    }
+  });
 
-    // BRANDS
-    const brandMap = {};
-    // LOCATIONS
-    const locationMap = {};
-
-    salesRows.forEach(row => {
-      const dateStr = row.date;
-      const isToday = (dateStr === todayStr);
-
-      const location = row.location || "Unknown";
-      const department = row.department || "Unknown";
-      const leads = row.leads || 0;
-      const sales = row.sales || 0;
-
-      // Brand
-      const brand = getBrandFromDepartment(department);
-      if (!brandMap[brand]) {
-        brandMap[brand] = {
-          brand,
-          dailyLeads: 0,
-          dailySales: 0,
-          mtdLeads: 0,
-          mtdSales: 0,
-          color: brandColors[brand] || "var(--accent)"
-        };
-      }
-      brandMap[brand].mtdLeads += leads;
-      brandMap[brand].mtdSales += sales;
-      if (isToday) {
-        brandMap[brand].dailyLeads += leads;
-        brandMap[brand].dailySales += sales;
-      }
-
-      // Location + department
-      if (!locationMap[location]) {
-        locationMap[location] = {};
-      }
-      if (!locationMap[location][department]) {
-        locationMap[location][department] = {
-          name: department,
-          dailyLeads: 0,
-          dailySales: 0,
-          mtdLeads: 0,
-          mtdSales: 0
-        };
-      }
-      const dept = locationMap[location][department];
-      dept.mtdLeads += leads;
-      dept.mtdSales += sales;
-      if (isToday) {
-        dept.dailyLeads += leads;
-        dept.dailySales += sales;
-      }
-    });
-
-    // Convert maps to arrays
-    const brands = Object.values(brandMap);
-    const locations = Object.keys(locationMap).map(locName => {
-      const deptMap = locationMap[locName];
-      return {
-        location: locName,
-        departments: Object.values(deptMap)
-      };
-    });
-
-    // SERVICE
-    const serviceMap = {};
-
-    serviceRows.forEach(row => {
-      const site = row.site || "Unknown Service";
-      const dateStr = row.date;
-      const isToday = (dateStr === todayStr);
-
-      if (!serviceMap[site]) {
-        serviceMap[site] = {
-          site,
-          dailyCustomerRos: 0,
-          dailyWarrantyRos: 0,
-          dailyInvoicedRemaining: 0,
-          dailyGross: 0,
-          mtdCustomerRos: 0,
-          mtdWarrantyRos: 0,
-          mtdGross: 0,
-          targetGross: 0,
-          workingDays: 22,
-          datesSet: new Set()
-        };
-      }
-
-      const s = serviceMap[site];
-
-      const customer = row.customer_ros || 0;
-      const warranty = row.warranty_ros_today || 0;
-      const invRem = row.invoiced_remaining || 0;
-      const gross = row.gross_today || 0;
-
-      s.mtdCustomerRos += customer;
-      s.mtdWarrantyRos += warranty;
-      s.mtdGross += gross;
-      s.datesSet.add(dateStr);
-      s.mtdInvoicedRemaining = invRem;
-
-
-      if (isToday) {
-        s.dailyCustomerRos += customer;
-        s.dailyWarrantyRos += warranty;
-        s.dailyInvoicedRemaining = invRem;
-        s.dailyGross += gross;
-      }
-
-      if (row.target_gross != null) s.targetGross = row.target_gross;
-      if (row.working_days != null) s.workingDays = row.working_days;
-    });
-
-    const services = Object.values(serviceMap).map(s => {
-      const daysElapsed = s.datesSet.size || 1;
-      return {
-        site: s.site,
-        customerRosToday: s.dailyCustomerRos,
-        warrantyRosToday: s.dailyWarrantyRos,
-        invoicedNotClosedRemaining: s.dailyInvoicedRemaining,
-        mtdInvoicedRemaining: s.mtdInvoicedRemaining,
-        grossToday: s.dailyGross,
-        mtdRos: s.mtdCustomerRos + s.mtdWarrantyRos,
-        mtdGross: s.mtdGross,
-        targetGross: s.targetGross || 0,
-        workingDays: s.workingDays || 22,
-        daysElapsed
-      };
-    });
-
-    dashData = {
-      date: todayStr,
-      brands,
-      locations,
-      services
-    };
-
-    statusEl.textContent = "";
-    statusEl.className = "";
-    renderAll();
-  }
-
-  // ---------- RENDER ENGINE (uses dashData) ----------
-
-  function renderSummary() {
-    if (!dashData) return;
-    const s = dashData;
-    const cont = document.getElementById("summary");
-
-    let totalLeadsDaily = 0, totalSalesDaily = 0;
-    let totalLeadsMtd = 0, totalSalesMtd = 0;
-
-    s.locations.forEach(loc => {
-      loc.departments.forEach(d => {
-        totalLeadsDaily += d.dailyLeads;
-        totalSalesDaily += d.dailySales;
-        totalLeadsMtd += d.mtdLeads;
-        totalSalesMtd += d.mtdSales;
-      });
-    });
-
-    let totalDailyRos = 0, totalMtdRos = 0;
-    let totalDailyGross = 0, totalMtdGross = 0;
-    let totalTargetGross = 0;
-    let daysElapsedCommon = 0;
-    let workingDaysCommon = 0;
-
-    s.services.forEach(site => {
-      const dailyRos = site.customerRosToday + site.warrantyRosToday;
-      totalDailyRos += dailyRos;
-      totalMtdRos += site.mtdRos;
-      totalDailyGross += site.grossToday;
-      totalMtdGross += site.mtdGross;
-      totalTargetGross += site.targetGross;
-      daysElapsedCommon = Math.max(daysElapsedCommon, site.daysElapsed);
-      workingDaysCommon = Math.max(workingDaysCommon, site.workingDays);
-    });
-
-    if (!daysElapsedCommon) daysElapsedCommon = 1;
-    if (!workingDaysCommon) workingDaysCommon = 22;
-
-    const roDailyAvg = totalMtdRos / daysElapsedCommon;
-    const requiredGrossPerDay = totalTargetGross / workingDaysCommon;
-
-    const leadsVal = mode === "daily" ? totalLeadsDaily : totalLeadsMtd;
-    const salesVal = mode === "daily" ? totalSalesDaily : totalSalesMtd;
-    const rosVal = mode === "daily" ? totalDailyRos : totalMtdRos;
-    const grossVal = mode === "daily" ? totalDailyGross : totalMtdGross;
-
-    cont.innerHTML = `
-      <div class="section-title">Group Summary</div>
-      <div class="grid">
-        <div class="tile">
-          <div class="metric">${leadsVal}</div>
-          <div class="label">${mode === "daily" ? "Leads Today" : "Leads MTD"}</div>
-        </div>
-        <div class="tile">
-          <div class="metric">${salesVal}</div>
-          <div class="label">${mode === "daily" ? "Sales Today" : "Sales MTD"}</div>
-        </div>
-        <div class="tile">
-          <div class="metric">${rosVal}</div>
-          <div class="label">${mode === "daily" ? "ROs Today" : "ROs MTD"}</div>
-        </div>
-        <div class="tile">
-          <div class="metric">${fmtMoney(grossVal)}</div>
-          <div class="label">${mode === "daily" ? "Gross Today" : "Gross MTD"}</div>
-        </div>
-
-        ${mode === "mtd" ? `
-        <div class="tile">
-          <div class="metric">${roDailyAvg.toFixed(1)}</div>
-          <div class="label">RO Daily Avg</div>
-        </div>
-        <div class="tile">
-          <div class="metric">${fmtMoney(requiredGrossPerDay)}</div>
-          <div class="label">Required Gross/Day</div>
-        </div>
-        ` : ""}
-      </div>
-    `;
-  }
-
-  function renderBrands() {
-    if (!dashData) return;
-    const s = dashData;
-    const cont = document.getElementById("brand-section");
-
-    const g = document.createElement("div");
-    g.className = "grid";
-
-    s.brands.forEach(b => {
-      const leadsVal = mode === "daily" ? b.dailyLeads : b.mtdLeads;
-      const salesVal = mode === "daily" ? b.dailySales : b.mtdSales;
-
-      const tile = document.createElement("div");
-      tile.className = "tile";
-      tile.style.borderLeft = "6px solid " + (b.color || "var(--accent)");
-
-      tile.innerHTML = `
-        <div class="brand-label">${b.brand}</div>
-        <div class="metric">${leadsVal}</div>
-        <div class="label">${mode === "daily" ? "Leads Today" : "Leads MTD"}</div>
-        <br>
-        <div class="metric">${salesVal}</div>
-        <div class="label">${mode === "daily" ? "Sales Today" : "Sales MTD"}</div>
-      `;
-      g.appendChild(tile);
-    });
-
-    cont.innerHTML = `<div class="section-title">Brand Performance</div>`;
-    cont.appendChild(g);
-  }
-
-  function renderLocations() {
-    if (!dashData) return;
-    const s = dashData;
-    const cont = document.getElementById("location-section");
-    cont.innerHTML = `<div class="section-title">Location Breakdown</div>`;
-
-    const grid = document.createElement("div");
-    grid.className = "grid";
-
-    s.locations.forEach(loc => {
-      const box = document.createElement("div");
-      box.className = "location-group";
-
-      box.innerHTML = `<div class="location-header">${loc.location}</div>`;
-
-      const deptList = document.createElement("div");
-      deptList.className = "dept-list";
-
-      loc.departments.forEach(d => {
-        const leadsVal = mode === "daily" ? d.dailyLeads : d.mtdLeads;
-        const salesVal = mode === "daily" ? d.dailySales : d.mtdSales;
-
-        const tile = document.createElement("div");
-        tile.className = "dept-tile";
-        tile.innerHTML = `
-          <div class="dept-name">${d.name}</div>
-          <div class="dept-row">
-            <span>Leads</span> <span>${leadsVal}</span>
-          </div>
-          <div class="dept-row">
-            <span>Sales</span> <span>${salesVal}</span>
-          </div>
-        `;
-        deptList.appendChild(tile);
-      });
-
-      box.appendChild(deptList);
-      grid.appendChild(box);
-    });
-
-    cont.appendChild(grid);
-  }
-
-  function renderServices() {
-    if (!dashData) return;
-    const s = dashData;
-    const cont = document.getElementById("service-section");
-    cont.innerHTML = `<div class="section-title">Service Departments</div>`;
-
-    const grid = document.createElement("div");
-    grid.className = "grid";
-
-    s.services.forEach(x => {
-      const dailyRos = x.customerRosToday + x.warrantyRosToday;
-      const roVal = mode === "daily" ? dailyRos : x.mtdRos;
-      const grossVal = mode === "daily" ? x.grossToday : x.mtdGross;
-
-      const tile = document.createElement("div");
-      tile.className = "tile";
-
-      tile.innerHTML = `
-        <div class="location-label">${x.site}</div>
-
-        <div class="metric">${roVal}</div>
-        <div class="label">${mode === "daily" ? "ROs Today" : "ROs MTD"}</div>
-
-        <div class="service-extra">
-          Customer: ${x.customerRosToday} | Warranty: ${x.warrantyRosToday}<br>
-          Invoiced Remaining: ${mode === "daily" 
-    ? x.invoicedNotClosedRemaining 
-    : x.mtdInvoicedRemaining}
-
-        </div>
-
-        <br>
-
-        <div class="metric">${fmtMoney(grossVal)}</div>
-        <div class="label">${mode === "daily" ? "Gross Today" : "Gross MTD"}</div>
-
-        ${mode === "mtd" ? `
-          <div class="label">RO Daily Avg: ${(x.mtdRos / x.daysElapsed).toFixed(1)}</div>
-          <div class="label">Gross Daily Avg: ${fmtMoney(x.mtdGross / x.daysElapsed)}</div>
-          <div class="label">Required Gross/Day: ${fmtMoney(x.targetGross / x.workingDays)}</div>
-        ` : ""}
-      `;
-
-      grid.appendChild(tile);
-    });
-
-    cont.appendChild(grid);
-  }
-
-  function renderAll() {
-    renderSummary();
-    renderBrands();
-    renderLocations();
-    renderServices();
-  }
-
-  // Toggle handlers
-  document.getElementById("btnDaily").onclick = () => {
-    mode = "daily";
-    document.getElementById("btnDaily").classList.add("active");
-    document.getElementById("btnMtd").classList.remove("active");
-    renderAll();
+  dashData = {
+    brands:Object.values(brandMap),
+    locations:Object.entries(locMap).map(([k,v])=>({location:k, departments:Object.values(v)})),
+    services:Object.values(svcMap)
   };
 
-  document.getElementById("btnMtd").onclick = () => {
-    mode = "mtd";
-    document.getElementById("btnMtd").classList.add("active");
-    document.getElementById("btnDaily").classList.remove("active");
-    renderAll();
-  };
+  document.getElementById("status").textContent = "";
+  renderAll();
+}
 
-  // Load from Supabase on startup
-  loadDashboardData();
+function renderAll() {
+  document.getElementById("summary").innerHTML = `<div class="section-title">Dashboard Loaded</div>`;
+}
+
+document.getElementById("btnDaily").onclick = () => { mode="daily"; renderAll(); };
+document.getElementById("btnMtd").onclick = () => { mode="mtd"; renderAll(); };
+
+loadDashboardData();
 </script>
 
 </body>
 </html>
-
-
-
