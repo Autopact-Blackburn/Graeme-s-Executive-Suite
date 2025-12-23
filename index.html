@@ -5,6 +5,7 @@
 <title>Graeme's — Executive Performance Dashboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
+<!-- Supabase CDN -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -112,6 +113,7 @@ body {
 </div>
 
 <div id="summary"></div>
+
 <script>
 /* ===============================
    SUPABASE CLIENT (SAFE)
@@ -130,102 +132,132 @@ const money = v =>
 function getDates() {
   const d = new Date();
   const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2,"0");
+  const m = String(d.getMonth()+1).padStart(2,"0");
   const day = String(d.getDate()).padStart(2,"0");
-  return {
-    today: `${y}-${m}-${day}`,
-    start: `${y}-${m}-01`
-  };
+  return { today:`${y}-${m}-${day}`, start:`${y}-${m}-01` };
 }
 
 async function loadDashboardData() {
   const { today, start } = getDates();
   document.getElementById("dateLabel").textContent = `Data for ${today}`;
 
-  const { data: sales = [] } = await sb
-    .from("sales_reports")
-    .select("*")
-    .gte("date", start)
-    .lte("date", today);
+  const { data: sales } = await sb.from("sales_reports")
+    .select("*").gte("date", start).lte("date", today);
 
-  const { data: service = [] } = await sb
-    .from("service_reports")
-    .select("*")
-    .gte("date", start)
-    .lte("date", today);
+  const { data: service } = await sb.from("service_reports")
+    .select("*").gte("date", start).lte("date", today);
 
-  let totals = {
+  const totals = {
     dailyLeads:0, mtdLeads:0,
     dailySales:0, mtdSales:0,
     dailyRos:0, mtdRos:0,
     dailyGross:0, mtdGross:0
   };
 
-  sales.forEach(r => {
-    totals.mtdLeads += r.leads || 0;
-    totals.mtdSales += r.sales || 0;
+  const dealerships = {};
+
+  (sales || []).forEach(r => {
+    const loc = r.location || "Unknown";
+
+    dealerships[loc] ??= {
+      name:loc,
+      dailyLeads:0, mtdLeads:0,
+      dailySales:0, mtdSales:0,
+      dailyRos:0, mtdRos:0,
+      dailyGross:0, mtdGross:0
+    };
+
+    totals.mtdLeads += r.leads||0;
+    totals.mtdSales += r.sales||0;
+    dealerships[loc].mtdLeads += r.leads||0;
+    dealerships[loc].mtdSales += r.sales||0;
+
     if (r.date === today) {
-      totals.dailyLeads += r.leads || 0;
-      totals.dailySales += r.sales || 0;
+      totals.dailyLeads += r.leads||0;
+      totals.dailySales += r.sales||0;
+      dealerships[loc].dailyLeads += r.leads||0;
+      dealerships[loc].dailySales += r.sales||0;
     }
   });
 
-  service.forEach(r => {
-    const ros = (r.customer_ros || 0) + (r.warranty_ros_today || 0);
+  (service || []).forEach(r => {
+    const loc = r.site || "Unknown";
+    const ros = (r.customer_ros||0)+(r.warranty_ros_today||0);
+
+    dealerships[loc] ??= {
+      name:loc,
+      dailyLeads:0, mtdLeads:0,
+      dailySales:0, mtdSales:0,
+      dailyRos:0, mtdRos:0,
+      dailyGross:0, mtdGross:0
+    };
+
     totals.mtdRos += ros;
-    totals.mtdGross += r.gross_today || 0;
+    totals.mtdGross += r.gross_today||0;
+    dealerships[loc].mtdRos += ros;
+    dealerships[loc].mtdGross += r.gross_today||0;
+
     if (r.date === today) {
       totals.dailyRos += ros;
-      totals.dailyGross += r.gross_today || 0;
+      totals.dailyGross += r.gross_today||0;
+      dealerships[loc].dailyRos += ros;
+      dealerships[loc].dailyGross += r.gross_today||0;
     }
   });
 
-  dashData = totals;
-  renderSummary();
+  dashData = { totals, dealerships:Object.values(dealerships) };
+  render();
 }
-function renderSummary() {
-  if (!dashData) return;
 
-  const leads = mode === "daily" ? dashData.dailyLeads : dashData.mtdLeads;
-  const sales = mode === "daily" ? dashData.dailySales : dashData.mtdSales;
-  const ros = mode === "daily" ? dashData.dailyRos : dashData.mtdRos;
-  const gross = mode === "daily" ? dashData.dailyGross : dashData.mtdGross;
+function render() {
+  const t = dashData.totals;
 
-  document.getElementById("summary").innerHTML = `
+  const leads = mode==="daily"?t.dailyLeads:t.mtdLeads;
+  const sales = mode==="daily"?t.dailySales:t.mtdSales;
+  const ros = mode==="daily"?t.dailyRos:t.mtdRos;
+  const gross = mode==="daily"?t.dailyGross:t.mtdGross;
+
+  let html = `
     <div class="section-title">Group Summary</div>
     <div class="grid">
-      <div class="tile">
-        <div class="metric">${leads}</div>
-        <div class="label">Leads</div>
-      </div>
-      <div class="tile">
-        <div class="metric">${sales}</div>
-        <div class="label">Sales</div>
-      </div>
-      <div class="tile">
-        <div class="metric">${ros}</div>
-        <div class="label">ROs</div>
-      </div>
-      <div class="tile">
-        <div class="metric">${money(gross)}</div>
-        <div class="label">Gross</div>
-      </div>
+      <div class="tile"><div class="metric">${leads}</div><div class="label">Leads</div></div>
+      <div class="tile"><div class="metric">${sales}</div><div class="label">Sales</div></div>
+      <div class="tile"><div class="metric">${ros}</div><div class="label">ROs</div></div>
+      <div class="tile"><div class="metric">${money(gross)}</div><div class="label">Gross</div></div>
     </div>
+
+    <div class="section-title">Dealership Breakdown</div>
+    <div class="grid">
   `;
+
+  dashData.dealerships.forEach(d => {
+    html += `
+      <div class="tile">
+        <div class="label"><strong>${d.name}</strong></div><br>
+        <div class="metric">${mode==="daily"?d.dailyLeads:d.mtdLeads}</div><div class="label">Leads</div>
+        <div class="metric">${mode==="daily"?d.dailySales:d.mtdSales}</div><div class="label">Sales</div>
+        <div class="metric">${mode==="daily"?d.dailyRos:d.mtdRos}</div><div class="label">ROs</div>
+        <div class="metric">${money(mode==="daily"?d.dailyGross:d.mtdGross)}</div><div class="label">Gross</div>
+      </div>
+    `;
+  });
+
+  html += `</div>`;
+  document.getElementById("summary").innerHTML = html;
 }
 
 btnDaily.onclick = () => {
-  mode = "daily";
+  mode="daily";
   btnDaily.classList.add("active");
   btnMtd.classList.remove("active");
-  renderSummary();
+  render();
 };
 
 btnMtd.onclick = () => {
-  mode = "mtd";
+  mode="mtd";
   btnMtd.classList.add("active");
   btnDaily.classList.remove("active");
-  renderSummary();
+  render();
 };
 
 loadDashboardData();
